@@ -2,6 +2,13 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
+credentials = service_account.Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=['https://www.googleapis.com/auth/spreadsheets']
+)
+
+client = gspread.authorize(credentials)
+
 # Configuração da página
 st.set_page_config(
     page_title="Painel de Alunos",
