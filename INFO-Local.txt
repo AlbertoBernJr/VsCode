@@ -5,7 +5,7 @@ instalar bibliotecas do arquivo [ req ] -> pip install -r requirements.txt
 
 ativar o ambiente virtual se não estiver ativado -> <pasta>\Scripts\active -> v1\Scripts\activate
 
-Guardar bibliotecas instaladas -> [ pip freeze > requirements.txt ]
+Guardar bibliotecas instaladas -> [ pip freeze > requirements_Geral.txt ]
 
 Recriar arquivo [ Painel de Alunos.exe ] -> 
 pyinstaller --onefile --windowed --name "Painel_Alunos" Painel\Painel_Alunos.py
