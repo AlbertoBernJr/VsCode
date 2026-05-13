@@ -1,0 +1,15 @@
+python -m venv <nome> -> python -m venv v1
+<pasta>\Scripts\active -> v1\Scripts\activate
+
+instalar bibliotecas do arquivo [ req ] -> pip install -r requirements.txt
+
+ativar o ambiente virtual se não estiver ativado -> <pasta>\Scripts\active -> v1\Scripts\activate
+
+Guardar bibliotecas instaladas -> [ pip freeze > requirements.txt ]
+
+Recriar arquivo [ Painel de Alunos.exe ] -> 
+pyinstaller --onefile --windowed --name "Painel_Alunos" Painel\Painel_Alunos.py
+
+Encontrar o interpretador que esta sendo usado por V1 -> [ python -c "import sys; print(sys.executable)" ]
+
+executar MalaDireta_DecFin.py -> [ python "H:\.shortcut-targets-by-id\1MG2688Fkv8CYHIKvpIwtufPTOydK2Qo3\Time BI\18. VS Code\MalaDireta_DecFin.py" ]
