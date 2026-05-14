@@ -140,7 +140,13 @@ def mudar_pagina(delta):
     if 1 <= nova_pagina <= total_paginas:
         st.session_state['pagina_input'] = nova_pagina
 
-# ============ SIDEBAR ============
+# ============ FUNÇÃO DE LIMPAR ============
+
+def limpar_filtros():
+    """Limpa todos os filtros e reseta para estado inicial"""
+    st.session_state['busca_input'] = ""
+    st.session_state['coluna_select'] = "Todas as colunas"
+    st.session_state['pagina_input'] = 1
 
 # ============ SIDEBAR ============
 
@@ -174,19 +180,14 @@ with st.sidebar:
     
     st.divider()
     
-    # 3️⃣ BOTÃO LIMPAR
-    if st.button("🔄 Limpar", use_container_width=True):
-        st.session_state['busca_input'] = ""
-        st.session_state['coluna_select'] = "Todas as colunas"
-        st.session_state['pagina_input'] = 1
-        st.rerun()
+    # 3️⃣ BOTÃO LIMPAR (usando on_click)
+    st.button("🔄 Limpar", use_container_width=True, on_click=limpar_filtros)
     
     st.divider()
     
     # 4️⃣ PAGINAÇÃO
     st.markdown("**📄 Página**")
     
-    # Usa 30 registros por página (fixo)
     reg_por_pagina = 30
     
     df_filtrado = aplicar_filtros(df, busca, coluna_filtro)
