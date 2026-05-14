@@ -142,7 +142,21 @@ def mudar_pagina(delta):
 
 # ============ SIDEBAR ============
 
+# ============ SIDEBAR ============
+
 with st.sidebar:
+    
+    # 1️⃣ TOTAL DE ALUNOS
+    st.markdown(f"""
+    <div class="metric-box">
+        <div class="number">{len(df):,}</div>
+        <div class="label">Total de Alunos</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # 2️⃣ BUSCA
     st.header("🔍 Busca")
     
     busca = st.text_input(
@@ -160,33 +174,20 @@ with st.sidebar:
     
     st.divider()
     
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔄 Limpar", use_container_width=True):
-            st.session_state['busca_input'] = ""
-            st.session_state['coluna_select'] = "Todas as colunas"
-            st.session_state['pagina_input'] = 1
-            st.rerun()
-    with col2:
-        if st.button("🔃 Atualizar", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
+    # 3️⃣ BOTÃO LIMPAR
+    if st.button("🔄 Limpar", use_container_width=True):
+        st.session_state['busca_input'] = ""
+        st.session_state['coluna_select'] = "Todas as colunas"
+        st.session_state['pagina_input'] = 1
+        st.rerun()
     
     st.divider()
     
-    st.caption("Registros por página:")
-    reg_por_pagina = st.selectbox(
-        "Registros por página",
-        [20, 30, 50, 100],
-        index=1,
-        label_visibility="collapsed",
-        key="reg_pagina"
-    )
-    
-    st.divider()
-    
-    # PAGINAÇÃO
+    # 4️⃣ PAGINAÇÃO
     st.markdown("**📄 Página**")
+    
+    # Usa 30 registros por página (fixo)
+    reg_por_pagina = 30
     
     df_filtrado = aplicar_filtros(df, busca, coluna_filtro)
     total_paginas = max(1, (len(df_filtrado) - 1) // reg_por_pagina + 1)
@@ -220,16 +221,7 @@ with st.sidebar:
     
     st.divider()
     
-    # TOTAL DE ALUNOS
-    st.markdown(f"""
-    <div class="metric-box">
-        <div class="number">{len(df):,}</div>
-        <div class="label">Total de Alunos</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.divider()
-    
+    # 5️⃣ INFO
     st.caption(f"📁 [BD]-Mat/PreMat2")
     st.caption(f"🕒 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
