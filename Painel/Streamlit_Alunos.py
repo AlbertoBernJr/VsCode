@@ -11,7 +11,7 @@ st.set_page_config(
     page_title="Painel de Alunos",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # CSS
@@ -30,6 +30,23 @@ st.markdown("""
         color: white !important;
         font-size: 12px !important;
         text-transform: uppercase !important;
+    }
+    .metric-box {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        margin: 10px 0;
+    }
+    .metric-box .number {
+        font-size: 28px;
+        font-weight: 700;
+        color: #667eea;
+    }
+    .metric-box .label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -78,6 +95,15 @@ if df is None or df.empty:
     st.warning("⚠️ O arquivo está vazio.")
     st.stop()
 
+# ============ INICIALIZA SESSÃO ============
+
+if 'busca_input' not in st.session_state:
+    st.session_state['busca_input'] = ""
+if 'coluna_select' not in st.session_state:
+    st.session_state['coluna_select'] = "Todas as colunas"
+if 'pagina_input' not in st.session_state:
+    st.session_state['pagina_input'] = 1
+
 # ============ SIDEBAR ============
 
 with st.sidebar:
@@ -106,11 +132,22 @@ with st.sidebar:
         if st.button("🔄 Limpar", use_container_width=True):
             st.session_state['busca_input'] = ""
             st.session_state['coluna_select'] = "Todas as colunas"
+            st.session_state['pagina_input'] = 1
             st.rerun()
     with col2:
         if st.button("🔃 Atualizar", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
+    
+    st.divider()
+    
+    # Total de alunos
+    st.markdown(f"""
+    <div class="metric-box">
+        <div class="number">{len(df):,}</div>
+        <div class="label">Total de Alunos</div>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.divider()
     
@@ -120,73 +157,76 @@ with st.sidebar:
         "Registros por página",
         [20, 30, 50, 100],
         index=1,
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="reg_pagina"
     )
     
     st.divider()
     
-    st.caption(f"📁 Fonte: [BD] - P1.csv")
-    st.caption(f"🕒 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-
-# ============ APLICA FILTROS ============
-
-df_filtrado = df.copy()
-
-# Garante que a busca funciona
-if busca and busca.strip():
-    termo = busca.strip().lower()
+    # Paginação
+    st.markdown("**📄 Página**")
     
-    if coluna_filtro != "Todas as colunas":
-        # Filtra apenas na coluna selecionada
-        mask = df_filtrado[coluna_filtro].astype(str).str.lower().str.contains(termo, na=False)
-        df_filtrado = df_filtrado[mask]
-    else:
-        # Filtra em todas as colunas
-        mask = pd.Series(False, index=df_filtrado.index)
-        for col in df_filtrado.columns:
-            mask |= df_filtrado[col].astype(str).str.lower().str.contains(termo, na=False)
-        df_filtrado = df_filtrado[mask]
-
-# ============ MÉTRICA ============
-
-st.metric("👨‍🎓 Total de Alunos", f"{len(df_filtrado):,}")
-
-st.divider()
-
-# ============ PAGINAÇÃO ============
-
-total_paginas = max(1, (len(df_filtrado) - 1) // reg_por_pagina + 1)
-
-if total_paginas > 1:
-    col_pag1, col_pag2, col_pag3 = st.columns([1, 3, 1])
+    # Aplica filtros primeiro para calcular total de páginas
+    df_filtrado = df.copy()
+    if busca and busca.strip():
+        termo = busca.strip().lower()
+        if coluna_filtro != "Todas as colunas":
+            mask = df_filtrado[coluna_filtro].astype(str).str.lower().str.contains(termo, na=False)
+            df_filtrado = df_filtrado[mask]
+        else:
+            mask = pd.Series(False, index=df_filtrado.index)
+            for col in df_filtrado.columns:
+                mask |= df_filtrado[col].astype(str).str.lower().str.contains(termo, na=False)
+            df_filtrado = df_filtrado[mask]
+    
+    total_paginas = max(1, (len(df_filtrado) - 1) // reg_por_pagina + 1)
+    
+    # Navegação com setas
+    col_pag1, col_pag2, col_pag3 = st.columns([1, 2, 1])
+    
+    with col_pag1:
+        if st.button("◀", use_container_width=True, disabled=st.session_state['pagina_input'] <= 1):
+            st.session_state['pagina_input'] -= 1
+            st.rerun()
+    
     with col_pag2:
         pagina = st.number_input(
-            "Página",
+            "Página atual",
             min_value=1,
             max_value=total_paginas,
-            value=1,
+            value=st.session_state['pagina_input'],
             label_visibility="collapsed",
             key="pagina_input"
         )
-else:
-    pagina = 1
+    
+    with col_pag3:
+        if st.button("▶", use_container_width=True, disabled=st.session_state['pagina_input'] >= total_paginas):
+            st.session_state['pagina_input'] += 1
+            st.rerun()
+    
+    st.caption(f"Página {pagina} de {total_paginas}")
+    
+    st.divider()
+    
+    st.caption(f"📁 [BD] - P1.csv")
+    st.caption(f"🕒 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
+# ============ CONTEÚDO PRINCIPAL ============
+
+# Já temos df_filtrado da sidebar
 inicio = (pagina - 1) * reg_por_pagina
 fim = min(inicio + reg_por_pagina, len(df_filtrado))
-
-if total_paginas > 1:
-    st.caption(f"Página {pagina} de {total_paginas} | {inicio+1:,} a {fim:,} de {len(df_filtrado):,}")
 
 # ============ TABELA ============
 
 st.dataframe(
     df_filtrado.iloc[inicio:fim],
     use_container_width=True,
-    height=500,
+    height=550,
     hide_index=True
 )
 
-# ============ DOWNLOAD ============
+# ============ RODAPÉ ============
 
 st.divider()
 
@@ -200,3 +240,5 @@ with col1:
         mime="text/csv",
         use_container_width=True
     )
+with col2:
+    st.caption(f"Mostrando {inicio+1:,} a {fim:,} de {len(df_filtrado):,} alunos")
