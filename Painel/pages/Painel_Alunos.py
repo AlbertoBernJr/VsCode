@@ -155,7 +155,7 @@ with st.sidebar:
     # 1️⃣ TOTAL DE ALUNOS
     st.markdown(f"""
     <div class="metric-box">
-        <div class="number">{len(df):,}</div>
+        <div class="number">{len(df_filtrado):,}</div>
         <div class="label">Total de Alunos</div>
     </div>
     """, unsafe_allow_html=True)
