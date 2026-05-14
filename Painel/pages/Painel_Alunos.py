@@ -148,11 +148,19 @@ def limpar_filtros():
     st.session_state['coluna_select'] = "Todas as colunas"
     st.session_state['pagina_input'] = 1
 
+# ============ CALCULA DADOS FILTRADOS (ANTES DA SIDEBAR) ============
+
+df_filtrado = aplicar_filtros(
+    df, 
+    st.session_state.get('busca_input', ''), 
+    st.session_state.get('coluna_select', 'Todas as colunas')
+)
+
 # ============ SIDEBAR ============
 
 with st.sidebar:
     
-    # 1️⃣ TOTAL DE ALUNOS
+    # 1️⃣ TOTAL DE ALUNOS (agora mostra o total filtrado)
     st.markdown(f"""
     <div class="metric-box">
         <div class="number">{len(df_filtrado):,}</div>
@@ -180,7 +188,7 @@ with st.sidebar:
     
     st.divider()
     
-    # 3️⃣ BOTÃO LIMPAR (usando on_click)
+    # 3️⃣ BOTÃO LIMPAR
     st.button("🔄 Limpar", use_container_width=True, on_click=limpar_filtros)
     
     st.divider()
@@ -189,8 +197,6 @@ with st.sidebar:
     st.markdown("**📄 Página**")
     
     reg_por_pagina = 30
-    
-    df_filtrado = aplicar_filtros(df, busca, coluna_filtro)
     total_paginas = max(1, (len(df_filtrado) - 1) // reg_por_pagina + 1)
     
     if st.session_state['pagina_input'] > total_paginas:
