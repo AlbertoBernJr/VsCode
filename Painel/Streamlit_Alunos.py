@@ -31,11 +31,6 @@ st.markdown("""
         font-size: 12px !important;
         text-transform: uppercase !important;
     }
-    .stDownloadButton button {
-        background: #4caf50 !important;
-        color: white !important;
-        font-weight: 600 !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -43,24 +38,17 @@ st.markdown('<div class="main-header"><h1>📊 Painel de Alunos</h1></div>', uns
 
 # ============ CARREGAR CSV DO GOOGLE DRIVE ============
 
-@st.cache_data(ttl=180)  # Cache de 3 minutos
+@st.cache_data(ttl=180)
 def carregar_csv_do_drive():
-    """Baixa o arquivo CSV diretamente do Google Drive usando credencial"""
     try:
-        # Autentica com a conta de serviço
         credentials = service_account.Credentials.from_service_account_info(
             st.secrets["gcp_service_account"],
             scopes=['https://www.googleapis.com/auth/drive.readonly']
         )
         
-        # Conecta ao Google Drive
         service = build('drive', 'v3', credentials=credentials)
-        
-        # ID do arquivo CSV
-        # Time BI/CSV/[BD] - P1.csv
         file_id = '1zSd2eW6KcXtIt3NT-6YtLQnsMnqC7DD6'
         
-        # Baixa o arquivo
         request = service.files().get_media(fileId=file_id)
         file_buffer = io.BytesIO()
         downloader = MediaIoBaseDownload(file_buffer, request)
@@ -70,8 +58,6 @@ def carregar_csv_do_drive():
             status, done = downloader.next_chunk()
         
         file_buffer.seek(0)
-        
-        # Lê o CSV
         df = pd.read_csv(file_buffer, dtype=str).fillna('')
         
         return df, None
@@ -86,33 +72,40 @@ with st.spinner("🔄 Carregando dados do Google Drive..."):
 
 if erro:
     st.error(f"❌ {erro}")
-    st.info("""
-    **Verifique:**
-    1. Se o arquivo foi compartilhado com: `python-agent@drive-time-bi.iam.gserviceaccount.com`
-    2. Se o ID do arquivo está correto
-    3. Se os Secrets estão configurados no Streamlit Cloud
-    """)
     st.stop()
 
 if df is None or df.empty:
-    st.warning("⚠️ O arquivo foi carregado mas está vazio.")
+    st.warning("⚠️ O arquivo está vazio.")
     st.stop()
 
 # ============ SIDEBAR ============
 
 with st.sidebar:
-    st.header("🔍 Filtros")
+    st.header("🔍 Busca")
     
-    busca = st.text_input("Buscar:", placeholder="Nome, RA, CPF, curso...")
-    
-    coluna_filtro = st.selectbox(
-        "Filtrar por coluna:",
-        ["Todas as colunas"] + list(df.columns)
+    # Campo de busca
+    busca = st.text_input(
+        "Buscar por nome, RA, CPF...",
+        placeholder="Digite aqui...",
+        key="busca_input",
+        label_visibility="collapsed"
     )
     
+    # Filtro por coluna
+    coluna_filtro = st.selectbox(
+        "Filtrar por coluna:",
+        ["Todas as colunas"] + list(df.columns),
+        key="coluna_select"
+    )
+    
+    st.divider()
+    
+    # Botões
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🔄 Limpar", use_container_width=True):
+            st.session_state['busca_input'] = ""
+            st.session_state['coluna_select'] = "Todas as colunas"
             st.rerun()
     with col2:
         if st.button("🔃 Atualizar", use_container_width=True):
@@ -121,47 +114,42 @@ with st.sidebar:
     
     st.divider()
     
+    # Registros por página
+    st.caption("Registros por página:")
     reg_por_pagina = st.selectbox(
-        "Registros por página:",
+        "Registros por página",
         [20, 30, 50, 100],
-        index=1
+        index=1,
+        label_visibility="collapsed"
     )
     
     st.divider()
     
-    # Informações do arquivo
-    st.caption(f"📊 Total: {len(df):,} registros")
-    st.caption(f"📋 Colunas: {len(df.columns)}")
-    st.caption(f"📁 Fonte: Time BI/CSV/[BD] - P1.csv")
-    st.caption(f"🕒 Atualizado: {datetime.now().strftime('%H:%M:%S')}")
+    st.caption(f"📁 Fonte: [BD] - P1.csv")
+    st.caption(f"🕒 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
 # ============ APLICA FILTROS ============
 
 df_filtrado = df.copy()
 
-if busca:
+# Garante que a busca funciona
+if busca and busca.strip():
+    termo = busca.strip().lower()
+    
     if coluna_filtro != "Todas as colunas":
-        mask = df_filtrado[coluna_filtro].astype(str).str.lower().str.contains(busca.lower(), na=False)
+        # Filtra apenas na coluna selecionada
+        mask = df_filtrado[coluna_filtro].astype(str).str.lower().str.contains(termo, na=False)
         df_filtrado = df_filtrado[mask]
     else:
-        mask = df_filtrado.apply(
-            lambda row: row.astype(str).str.lower().str.contains(busca.lower(), na=False).any(),
-            axis=1
-        )
+        # Filtra em todas as colunas
+        mask = pd.Series(False, index=df_filtrado.index)
+        for col in df_filtrado.columns:
+            mask |= df_filtrado[col].astype(str).str.lower().str.contains(termo, na=False)
         df_filtrado = df_filtrado[mask]
 
-# ============ MÉTRICAS ============
+# ============ MÉTRICA ============
 
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    st.metric("📊 Total", f"{len(df):,}")
-with col2:
-    st.metric("🔍 Exibindo", f"{len(df_filtrado):,}")
-with col3:
-    st.metric("📋 Colunas", len(df.columns))
-with col4:
-    st.metric("🔄 Atualização", "Automática")
+st.metric("👨‍🎓 Total de Alunos", f"{len(df_filtrado):,}")
 
 st.divider()
 
@@ -169,23 +157,25 @@ st.divider()
 
 total_paginas = max(1, (len(df_filtrado) - 1) // reg_por_pagina + 1)
 
-col_pag1, col_pag2, col_pag3 = st.columns([1, 3, 1])
-with col_pag2:
-    pagina = st.number_input(
-        "Página",
-        min_value=1,
-        max_value=total_paginas,
-        value=1,
-        label_visibility="collapsed"
-    )
+if total_paginas > 1:
+    col_pag1, col_pag2, col_pag3 = st.columns([1, 3, 1])
+    with col_pag2:
+        pagina = st.number_input(
+            "Página",
+            min_value=1,
+            max_value=total_paginas,
+            value=1,
+            label_visibility="collapsed",
+            key="pagina_input"
+        )
+else:
+    pagina = 1
 
 inicio = (pagina - 1) * reg_por_pagina
 fim = min(inicio + reg_por_pagina, len(df_filtrado))
 
-st.caption(
-    f"Mostrando {inicio+1:,} a {fim:,} de {len(df_filtrado):,} registros "
-    f"| Página {pagina} de {total_paginas}"
-)
+if total_paginas > 1:
+    st.caption(f"Página {pagina} de {total_paginas} | {inicio+1:,} a {fim:,} de {len(df_filtrado):,}")
 
 # ============ TABELA ============
 
@@ -200,8 +190,7 @@ st.dataframe(
 
 st.divider()
 
-col1, col2, col3 = st.columns([1, 3, 1])
-
+col1, col2 = st.columns([1, 4])
 with col1:
     csv = df_filtrado.to_csv(index=False).encode('utf-8-sig')
     st.download_button(
@@ -211,9 +200,3 @@ with col1:
         mime="text/csv",
         use_container_width=True
     )
-
-with col2:
-    st.caption(f"🕒 Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-
-with col3:
-    st.caption(f"📁 [BD] - P1.csv")
