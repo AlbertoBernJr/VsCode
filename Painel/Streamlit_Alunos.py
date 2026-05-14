@@ -103,6 +103,37 @@ if 'coluna_select' not in st.session_state:
     st.session_state['coluna_select'] = "Todas as colunas"
 if 'pagina_input' not in st.session_state:
     st.session_state['pagina_input'] = 1
+if 'reg_pagina' not in st.session_state:
+    st.session_state['reg_pagina'] = 30
+
+# ============ FUNÇÕES AUXILIARES ============
+
+def aplicar_filtros(df, busca, coluna):
+    """Aplica filtros de busca no DataFrame"""
+    if not busca or not busca.strip():
+        return df.copy()
+    
+    termo = busca.strip().lower()
+    
+    if coluna != "Todas as colunas":
+        mask = df[coluna].astype(str).str.lower().str.contains(termo, na=False)
+        return df[mask].copy()
+    else:
+        mask = pd.Series(False, index=df.index)
+        for col in df.columns:
+            mask |= df[col].astype(str).str.lower().str.contains(termo, na=False)
+        return df[mask].copy()
+
+def mudar_pagina(delta):
+    """Muda a página com segurança"""
+    nova_pagina = st.session_state['pagina_input'] + delta
+    
+    # Calcula total de páginas
+    df_temp = aplicar_filtros(df, st.session_state['busca_input'], st.session_state['coluna_select'])
+    total_paginas = max(1, (len(df_temp) - 1) // st.session_state['reg_pagina'] + 1)
+    
+    if 1 <= nova_pagina <= total_paginas:
+        st.session_state['pagina_input'] = nova_pagina
 
 # ============ SIDEBAR ============
 
@@ -141,16 +172,6 @@ with st.sidebar:
     
     st.divider()
     
-    # Total de alunos
-    st.markdown(f"""
-    <div class="metric-box">
-        <div class="number">{len(df):,}</div>
-        <div class="label">Total de Alunos</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.divider()
-    
     # Registros por página
     st.caption("Registros por página:")
     reg_por_pagina = st.selectbox(
@@ -163,48 +184,51 @@ with st.sidebar:
     
     st.divider()
     
-    # Paginação
+    # PAGINAÇÃO (acima do total de alunos)
     st.markdown("**📄 Página**")
     
-    # Aplica filtros primeiro para calcular total de páginas
-    df_filtrado = df.copy()
-    if busca and busca.strip():
-        termo = busca.strip().lower()
-        if coluna_filtro != "Todas as colunas":
-            mask = df_filtrado[coluna_filtro].astype(str).str.lower().str.contains(termo, na=False)
-            df_filtrado = df_filtrado[mask]
-        else:
-            mask = pd.Series(False, index=df_filtrado.index)
-            for col in df_filtrado.columns:
-                mask |= df_filtrado[col].astype(str).str.lower().str.contains(termo, na=False)
-            df_filtrado = df_filtrado[mask]
-    
+    # Calcula dados filtrados para paginação
+    df_filtrado = aplicar_filtros(df, busca, coluna_filtro)
     total_paginas = max(1, (len(df_filtrado) - 1) // reg_por_pagina + 1)
+    
+    # Corrige página se estiver fora do intervalo
+    if st.session_state['pagina_input'] > total_paginas:
+        st.session_state['pagina_input'] = total_paginas
+    
+    pagina = st.session_state['pagina_input']
     
     # Navegação com setas
     col_pag1, col_pag2, col_pag3 = st.columns([1, 2, 1])
     
     with col_pag1:
-        if st.button("◀", use_container_width=True, disabled=st.session_state['pagina_input'] <= 1):
-            st.session_state['pagina_input'] -= 1
-            st.rerun()
+        st.button("◀", key="btn_anterior", use_container_width=True, 
+                 disabled=(pagina <= 1), on_click=mudar_pagina, args=(-1,))
     
     with col_pag2:
-        pagina = st.number_input(
+        st.number_input(
             "Página atual",
             min_value=1,
             max_value=total_paginas,
-            value=st.session_state['pagina_input'],
+            value=pagina,
             label_visibility="collapsed",
             key="pagina_input"
         )
     
     with col_pag3:
-        if st.button("▶", use_container_width=True, disabled=st.session_state['pagina_input'] >= total_paginas):
-            st.session_state['pagina_input'] += 1
-            st.rerun()
+        st.button("▶", key="btn_proximo", use_container_width=True,
+                 disabled=(pagina >= total_paginas), on_click=mudar_pagina, args=(1,))
     
     st.caption(f"Página {pagina} de {total_paginas}")
+    
+    st.divider()
+    
+    # TOTAL DE ALUNOS (abaixo da paginação)
+    st.markdown(f"""
+    <div class="metric-box">
+        <div class="number">{len(df):,}</div>
+        <div class="label">Total de Alunos</div>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.divider()
     
@@ -213,7 +237,7 @@ with st.sidebar:
 
 # ============ CONTEÚDO PRINCIPAL ============
 
-# Já temos df_filtrado da sidebar
+# Exibe dados da página atual
 inicio = (pagina - 1) * reg_por_pagina
 fim = min(inicio + reg_por_pagina, len(df_filtrado))
 
