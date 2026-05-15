@@ -1,10 +1,10 @@
 import streamlit as st
-import subprocess
+import requests
 import os
 
 # Configuração da página
 st.set_page_config(
-    page_title="Cartão Nominal - Local",
+    page_title="Cartão Nominal - Download",
     page_icon="🪪",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -13,68 +13,77 @@ st.set_page_config(
 st.title("🪪 Gerador de Cartões Nominais")
 
 st.markdown("""
-### Aplicativo Local
+### Download do Aplicativo
 
-Clique no botão abaixo para abrir o Gerador de Cartões Nominais no seu computador.
+Baixe o executável do Gerador de Cartões Nominais para o seu computador.
 
-⚠️ O aplicativo será aberto fora do navegador.
+📁 **Local do arquivo:** Google Drive
 """)
 
 st.divider()
 
-# ============ CAMINHO DO EXECUTÁVEL ============
+# ============ ID DO ARQUIVO NO GOOGLE DRIVE ============
 
-caminho_executavel = r"C:\Users\alberto.bernardo\Desktop\GeradorCartoes_Matriz.exe"
+FILE_ID = "1O1pW-2Gt5oQ0nO-PyWu_HB1ZwPg0nmit"
+DOWNLOAD_URL = f"https://drive.google.com/uc?id={FILE_ID}&export=download"
 
-# Verifica se o arquivo existe
-arquivo_existe = os.path.exists(caminho_executavel)
-
-# Exibe informações
-col1, col2 = st.columns([1, 3])
-
-with col1:
-    if arquivo_existe:
-        st.success("✅ Disponível")
-    else:
-        st.error("❌ Não encontrado")
-
-with col2:
-    st.code(caminho_executavel, language="text")
-
-st.divider()
-
-# ============ BOTÃO PARA EXECUTAR ============
+# ============ BOTÃO DE DOWNLOAD ============
 
 col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
-    if st.button("🚀 Abrir Gerador de Cartões", use_container_width=True, type="primary"):
-        if arquivo_existe:
-            try:
-                subprocess.Popen([caminho_executavel])
-                st.success("✅ Aplicativo iniciado com sucesso!")
-                st.info("Verifique a barra de tarefas do Windows.")
-            except Exception as e:
-                st.error(f"❌ Erro ao abrir: {str(e)}")
+    st.markdown("""
+    ### 🪪 GeradorCartoes_Matriz.exe
+    
+    **Descrição:** Aplicativo para geração de cartões-resposta dos alunos.
+    
+    **Plataforma:** Windows
+    """)
+    
+    # Tenta fazer o download
+    try:
+        response = requests.get(DOWNLOAD_URL, allow_redirects=True, timeout=10)
+        
+        if response.status_code == 200:
+            st.download_button(
+                label="📥 Baixar Gerador de Cartões",
+                data=response.content,
+                file_name="GeradorCartoes_Matriz.exe",
+                mime="application/x-msdownload",
+                use_container_width=True,
+                type="primary"
+            )
+            st.success("✅ Arquivo pronto para download!")
         else:
-            st.error(f"""
-            ❌ Arquivo não encontrado!
-            
-            **Caminho procurado:**
-            `{caminho_executavel}`
-            
-            **Verifique se:**
-            - O arquivo está na pasta correta
-            - O nome do arquivo está correto
-            - O computador está acessível
-            """)
-
-# ============ INFORMAÇÕES ============
+            st.error(f"❌ Erro ao acessar o arquivo. Status: {response.status_code}")
+    except Exception as e:
+        st.error(f"❌ Erro de conexão: {str(e)}")
+        st.info("""
+        **Alternativa:** Acesse o link direto:
+        [Abrir no Google Drive](https://drive.google.com/file/d/1O1pW-2Gt5oQ0nO-PyWu_HB1ZwPg0nmit/view)
+        """)
 
 st.divider()
-st.caption("""
-📝 **Observações:**
-- Este botão só funciona quando o Streamlit está rodando localmente (`localhost`)
-- No Streamlit Cloud, o botão não terá efeito
-- O aplicativo abre em uma janela separada do Windows
+
+# ============ INSTRUÇÕES ============
+
+st.markdown("""
+### 📝 Como usar:
+
+1. Clique no botão **"Baixar Gerador de Cartões"**
+2. Salve o arquivo no seu computador
+3. Execute `GeradorCartoes_Matriz.exe`
+4. Siga as instruções do aplicativo
+
+### ⚙️ Requisitos:
+
+- Windows 10 ou superior
+- Microsoft Excel instalado (para atualização da base)
+- 50 MB de espaço livre
+
+### 🔗 Link direto:
+
+[Copiar link do Google Drive](https://drive.google.com/file/d/1O1pW-2Gt5oQ0nO-PyWu_HB1ZwPg0nmit/view)
 """)
+
+st.caption("🕒 Última atualização do executável: verifique no Google Drive")
